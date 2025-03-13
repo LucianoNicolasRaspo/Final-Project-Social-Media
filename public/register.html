@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+<script src="../backend/validators/validateRegister.js"></script>
+</head>
+<body style="background-color: rgba(25, 0, 255, 0.171); ">
+<div style="display: flex;background-color: rgb(22, 64, 255, 0.829);justify-content: center;margin-left:35%;margin-right:35%;margin-top:5%;padding:1%;border: solid grey 1px; border-radius: 0.6cm;">
+<form action="/register" method="POST" onsubmit="return validate()">
+    <div class="form-group">
+      <label style="color: white;font-weight: bolder; font-size: 35px; text-align: center;">Register</label><br>
+      <label for="username" style="color: white;font-weight: bolder;">Username</label>
+      <input type="text" class="form-control" name="username" id="username" aria-describedby="username" placeholder="Enter Username">
+    </div>
+    <div class="form-group">
+      <label for="password" style="color: white;font-weight: bolder;">Password</label>
+      <input type="password" class="form-control" name="password" id="password" placeholder="Password">
+    </div>
+    <div class="form-group">
+    <label for="email" style="color: white;font-weight: bolder;">Email</label>
+    <input type="email" class="form-control" name="email" id="email" aria-describedby="email" placeholder="Enter Email">
+    </div>
+        <div style="display:flex;flex-direction:row;justify-content: center;margin:auto">
+      <button style="margin: top 100px;background-color:  rgb(64, 57, 64);" type="submit" class="btn btn-primary">Register</button>
+    </div>
+    <div style="display:flex;flex-direction:row;justify-content: center;margin:auto;">
+      <a href="./login.html" style="color: white;margin-top: .3cm;">Already have an account. Login here.</a>
+  </div>
+  </form>
+</body>
+</div>
+</html>

@@ -4,13 +4,16 @@ const session = require('express-session');
 const path = require('path');
 const mongoose = require('mongoose');
 
+
+const bcrypt = require("bcrypt")
+const saltRounds = 5
 const app = express();
 const PORT = process.env.PORT || 3030;
 const SECRET_KEY = 'your_secret_key';
 
 mongoose.set('strictQuery', false);
 
-const uri =  "mongodb://root:<replace passwaord>@<replace mongo host>:27017";
+const uri =  "mongodb://127.0.0.1:27017/SocialDB";
 mongoose.connect(uri,{'dbName':'SocialDB'});
 
 const User = mongoose.model('User', { username: String, email: String, password: String });
@@ -19,7 +22,20 @@ const Post = mongoose.model('Post', { userId: mongoose.Schema.Types.ObjectId, te
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({ secret: SECRET_KEY, resave: false, saveUninitialized: true, cookie: { secure: false } }));
+app.use(express.static(path.join(__dirname, 'public')));
 
+app.use((req, res, next) => {
+  const publicRoutes = ['/', '/login', '/register'];
+  if (publicRoutes.includes(req.path) || req.path.startsWith('/public/')) {
+    return next(); 
+  }
+
+  if (!req.session.token) {
+    return res.redirect('/login');
+  }
+
+  next();
+});
 
 // Insert your authenticateJWT Function code here.
 function authenticateJWT(req, res, next) {
@@ -59,62 +75,81 @@ function requireAuth(req, res, next) {
     }
   }
 
+  
 // Insert your routing HTML code here.
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
 app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+
+app.get('/index', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 app.get('/post', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'post.html')));
-app.get('/index', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html'), { username: req.user.username }));
+app.get('/session', (req, res) => {
+  if (req.session.token) {
+      try {
+          const decoded = jwt.verify(req.session.token, SECRET_KEY);
+          res.json({ loggedIn: true, username: decoded.username });
+      } catch (error) {
+          res.json({ loggedIn: false });
+      }
+  } else {
+      res.json({ loggedIn: false });
+  }
+});
+
 
 // Insert your user registration code here.
 app.post('/register', async (req, res) => {
-    const { username, email, password } = req.body;
-  
-    try {
-      // Check if the user already exists
+  const { username, email, password } = req.body;
+
+  console.log('Received data:', { username, email, password });
+
+  try {
+      // Verificar si el usuario ya existe
       const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-  
       if (existingUser) return res.status(400).json({ message: 'User already exists' });
-  
-      // Create and save the new user
-      const newUser = new User({ username, email, password });
+
+      // Encriptar la contraseña correctamente
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+      // Guardar el nuevo usuario con la contraseña encriptada
+      const newUser = new User({ username, email, password: hashedPassword });
       await newUser.save();
-  
-      // Generate JWT token and store in session
+
+      // Generar y almacenar el token en la sesión
       const token = jwt.sign({ userId: newUser._id, username: newUser.username }, SECRET_KEY, { expiresIn: '1h' });
       req.session.token = token;
-  
-      // Respond with success message
-      res.send({"message":`The user ${username} has been added`});
-    } catch (error) {
+
+      res.redirect('/login'); 
+  } catch (error) {
       console.error(error);
-      // Handle server errors
       res.status(500).json({ message: 'Internal Server Error' });
-    }
-  });
-  
+  }
+});
+
+
 // Insert your user login code here.
 app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-  
-    try {
-      // Check if the user exists with the provided credentials
-      const user = await User.findOne({ username, password });
-  
-      if (!user) return res.status(401).json({ message: 'Invalid credentials' });
-  
-      // Generate JWT token and store in session
-      const token = jwt.sign({ userId: user._id, username: user.username }, SECRET_KEY, { expiresIn: '1h' });
-      req.session.token = token;
-  
-      // Respond with a success message
-      res.send({"message":`${user.username} has logged in`});
-    } catch (error) {
-      console.error(error);
-      // Handle server errors
-      res.status(500).json({ message: 'Internal Server Error' });
-    }
-  });
+  const { username, password } = req.body;
+
+  try {
+    const user = await User.findOne({ username });
+
+    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
+
+    const token = jwt.sign({ userId: user._id, username: user.username }, SECRET_KEY, { expiresIn: '1h' });
+    req.session.token = token;
+
+    res.redirect('/index');  
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+
 
 // Insert your post creation code here.
 app.post('/post', authenticateJWT, async (req, res) => {
